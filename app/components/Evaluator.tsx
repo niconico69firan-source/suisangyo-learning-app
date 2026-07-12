@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { getLesson, lessons, type Lesson } from "../data/lessons";
+import { FishSchoolIllustration, FishingBoatIllustration } from "./FisheryIllustrations";
 
 type Grade = "A" | "B" | "C";
 type AiStatus = {
@@ -19,6 +20,8 @@ type Result = {
   mode: "rubric" | "ai";
 };
 type ApiError = { code?: string; error?: string };
+
+const checkedLessonsStorageKey = "suisan-checked-lessons";
 
 const relationWords = ["ため", "ので", "から", "によって", "ことで", "その結果", "関係", "つなが", "すると", "なり", "一方", "しかし", "補う"];
 const lessonSixEffectWords = ["食生活", "食卓", "食べにく", "安定供給", "国民", "消費者", "わたしたち", "値段", "価格", "手に入り"];
@@ -124,6 +127,20 @@ function getClientId() {
   return created;
 }
 
+function readCheckedLessons() {
+  if (typeof window === "undefined") return [] as number[];
+  try {
+    const saved = JSON.parse(window.sessionStorage.getItem(checkedLessonsStorageKey) ?? "[]") as unknown;
+    return Array.isArray(saved) ? saved.filter((item): item is number => typeof item === "number") : [];
+  } catch {
+    return [] as number[];
+  }
+}
+
+export function canShowExample(checkedLessons: number[], lessonId: number) {
+  return checkedLessons.includes(lessonId);
+}
+
 async function fetchAiStatus(accessCode: string) {
   const headers: Record<string, string> = {};
   if (accessCode) headers["x-app-access-code"] = accessCode;
@@ -143,9 +160,12 @@ export function Evaluator() {
   );
   const [aiStatus, setAiStatus] = useState<AiStatus | null>(null);
   const [statusBusy, setStatusBusy] = useState(true);
+  const [checkedLessons, setCheckedLessons] = useState<number[]>([]);
   const lesson = useMemo(() => getLesson(lessonId), [lessonId]);
+  const showExample = canShowExample(checkedLessons, lessonId);
 
   useEffect(() => {
+    setCheckedLessons(readCheckedLessons());
     const savedCode = window.sessionStorage.getItem("suisan-access-code") ?? "";
     fetchAiStatus(savedCode)
       .then(setAiStatus)
@@ -173,6 +193,19 @@ export function Evaluator() {
     }
   }
 
+  function markLessonChecked(id: number) {
+    setCheckedLessons((current) => {
+      if (current.includes(id)) return current;
+      const next = [...current, id];
+      try {
+        window.sessionStorage.setItem(checkedLessonsStorageKey, JSON.stringify(next));
+      } catch {
+        // Storage is optional. The button still appears for the current page view.
+      }
+      return next;
+    });
+  }
+
   async function evaluate() {
     if (text.trim().length < 15) {
       setNotice("まとめをもう少し書いてから、チェックしてみよう。");
@@ -187,6 +220,7 @@ export function Evaluator() {
 
     if (!canUseAi) {
       setResult(fallback);
+      markLessonChecked(lessonId);
       setBusy(false);
       return;
     }
@@ -210,8 +244,10 @@ export function Evaluator() {
         throw new Error(payload.error || "check unavailable");
       }
       setResult(payload);
+      markLessonChecked(lessonId);
     } catch {
       setResult(fallback);
+      markLessonChecked(lessonId);
     } finally {
       setBusy(false);
     }
@@ -220,6 +256,7 @@ export function Evaluator() {
   return (
     <div className="evaluator-layout">
       <section className="input-panel panel">
+        <FishingBoatIllustration className="panel-corner-art panel-boat-art" />
         <div className="panel-heading">
           <span>STEP 1</span><h2>自分のまとめを入れよう</h2>
         </div>
@@ -266,8 +303,8 @@ export function Evaluator() {
           </div>
         )}
 
-        <div className="input-actions child-actions">
-          <button className="button button-secondary" type="button" onClick={() => { setText(lesson.sample); setResult(null); }}>例を見る</button>
+        <div className={`input-actions child-actions${showExample ? "" : " single-action"}`}>
+          {showExample && <button className="button button-secondary" type="button" onClick={() => { setText(lesson.sample); setResult(null); }}>例を見る</button>}
           <button className="button button-primary" type="button" disabled={busy} onClick={evaluate}>{busy ? "チェック中…" : "まとめをチェック"}</button>
         </div>
         {notice && <p className="notice">{notice}</p>}
@@ -275,6 +312,7 @@ export function Evaluator() {
       </section>
 
       <section className="result-panel panel" aria-live="polite">
+        <FishSchoolIllustration className="panel-corner-art panel-fish-art" />
         <div className="panel-heading"><span>STEP 2</span><h2>チェックの結果</h2></div>
         {!result ? (
           <div className="empty-result">
@@ -305,4 +343,3 @@ export function Evaluator() {
     </div>
   );
 }
-
