@@ -1,0 +1,17 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "suisangyo-learning-app",
+  "main": "./worker/index.ts",
+  "compatibility_date": "2026-07-12",
+  "compatibility_flags": ["nodejs_compat"],
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "suisangyo-learning-app-db",
+      "database_id": "59beeb83-9aac-4aa4-b58b-3eefeb9e2467"
+    }
+  ],
+  "observability": {
+    "enabled": true
+  }
+}
