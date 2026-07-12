@@ -10,11 +10,11 @@ export default function Home() {
         <div className="hero-copy">
           <p className="eyebrow">小学5年社会・水産業のさかんな地域</p>
           <h1>
-            学びを見取り、<br />
+            自分の学びを、<br />
             <span>次の一歩へ。</span>
           </h1>
           <p className="hero-lead">
-            毎時間のまとめをA・B・Cで見取るツールと、単元のゴール「水産業レスキュー作戦」を点検するツールです。
+            自分で書いたまとめをA・B・Cで確かめるツールと、単元のゴール「水産業レスキュー作戦」を点検するツールです。
           </p>
           <div className="hero-notes" aria-label="利用上の注意">
             <span>入力内容は保存しません</span>
@@ -40,8 +40,8 @@ export default function Home() {
           <span className="tool-number">01</span>
           <div>
             <p className="card-kicker">FOR EACH LESSON</p>
-            <h2>毎時間まとめ<br />ABC評価</h2>
-            <p>本時のねらいに合わせて、根拠・関連付け・理解の深まりを見取ります。</p>
+            <h2>自分のまとめ<br />ABCチェック</h2>
+            <p>できているところと、次の学習で考えるヒントを確かめます。</p>
           </div>
           <span className="card-arrow" aria-hidden="true">→</span>
         </Link>
@@ -60,12 +60,12 @@ export default function Home() {
       <section className="principles wrap">
         <div>
           <p className="eyebrow">大切にしていること</p>
-          <h2>判定で終わらず、問い返しへ。</h2>
+          <h2>今日の学びを、次の一歩へ。</h2>
         </div>
         <div className="principle-list">
-          <p><b>1</b><span><strong>Bが本時の到達目標</strong>です。Aは量ではなく、関連付けや意味の深まりで判断します。</span></p>
-          <p><b>2</b><span>自動判定は<strong>教師の見取りを支える補助</strong>です。評定・指導要録へ自動反映しません。</span></p>
-          <p><b>3</b><span>児童へはA・B・Cよりも、<strong>次に考える問い</strong>を返せるようにしています。</span></p>
+          <p><b>1</b><span><strong>Bが今日の目標</strong>です。Aは文章の長さではなく、つながりや見方の深まりです。</span></p>
+          <p><b>2</b><span>まとめは<strong>一度だけ</strong>で大丈夫。結果を見て書き直す必要はありません。</span></p>
+          <p><b>3</b><span>できているところを自信にして、<strong>つぎの一歩</strong>を次の学習で意識しよう。</span></p>
         </div>
       </section>
     </main>

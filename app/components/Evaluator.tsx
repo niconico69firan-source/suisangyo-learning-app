@@ -4,23 +4,10 @@ import { useEffect, useMemo, useState } from "react";
 import { getLesson, lessons, type Lesson } from "../data/lessons";
 
 type Grade = "A" | "B" | "C";
-type AiUsage = {
-  month: string;
-  requests: number;
-  requestLimit: number;
-  usedUsd: number;
-  budgetUsd: number;
-  remainingUsd: number;
-  inputTokens: number;
-  outputTokens: number;
-};
 type AiStatus = {
   configured: boolean;
-  model: string;
   requiresAccessCode: boolean;
   authorized?: boolean;
-  reason?: string;
-  usage?: AiUsage;
 };
 type Result = {
   grade: Grade;
@@ -30,13 +17,26 @@ type Result = {
   nextPrompt: string;
   caution: string;
   mode: "rubric" | "ai";
-  usage?: AiUsage;
 };
-type ApiError = { code?: string; error?: string; usage?: AiUsage };
+type ApiError = { code?: string; error?: string };
 
-const relationWords = ["ため", "ので", "から", "によって", "ことで", "その結果", "関係", "つなが", "一方", "しかし", "補う"];
-const effectWords = ["食卓", "生活", "将来", "続", "安定", "守", "品質", "新鮮", "収入", "消費者", "生産者", "漁師", "わたしたち"];
+const relationWords = ["ため", "ので", "から", "によって", "ことで", "その結果", "関係", "つなが", "すると", "なり", "一方", "しかし", "補う"];
+const lessonSixEffectWords = ["食生活", "食卓", "食べにく", "安定供給", "国民", "消費者", "わたしたち", "値段", "価格", "手に入り"];
+const perspectiveWords = ["一方", "しかし", "反対", "両方", "面がある", "立場", "助け", "役割", "よさ", "心配", "漁業者", "消費者"];
+const generalEffectWords = ["食卓", "生活", "将来", "安定", "守", "品質", "新鮮", "収入", "消費者", "生産者", "漁師", "わたしたち"];
 const evidenceWords = ["資料", "グラフ", "地図", "写真", "本文", "年", "万人", "万t", "％", "%", "ページ"];
+
+const gradeLabels: Record<Grade, string> = {
+  A: "すごい！考えが深まっているよ",
+  B: "目標クリア！",
+  C: "あと一歩！",
+};
+
+const encouragements: Record<Grade, string> = {
+  A: "自分の言葉で、考えをしっかりつなげられたね。すばらしい！",
+  B: "今日の大切なところが書けています。この調子！",
+  C: "ここまでまとめを書けたことが大事です。つぎの一歩を一つ意識してみよう。",
+};
 
 function containsAny(text: string, words: string[]) {
   return words.some((word) => text.includes(word));
@@ -48,49 +48,67 @@ function matchedGroups(text: string, lesson: Lesson) {
     .filter((item) => item.words.length > 0);
 }
 
-function localEvaluate(text: string, lesson: Lesson): Result {
+export function localEvaluate(text: string, lesson: Lesson): Result {
   const clean = text.replace(/\s+/g, "").trim();
   const groups = matchedGroups(clean, lesson);
   const relation = containsAny(clean, relationWords);
-  const effect = containsAny(clean, effectWords);
   const source = containsAny(clean, evidenceWords) || /\d/.test(clean);
-  const longEnough = clean.length >= 70;
+  const lessonSixEffect = containsAny(clean, lessonSixEffectWords);
+  const perspective = containsAny(clean, perspectiveWords);
+  const generalEffect = containsAny(clean, generalEffectWords);
 
   let grade: Grade = "C";
   if (lesson.id === 6) {
-    if (groups.length >= 3 && relation && effect && source && clean.length >= 100) grade = "A";
-    else if (groups.length >= 2 && relation && source) grade = "B";
+    const bReached = groups.length >= 2 && relation;
+    if (bReached && (lessonSixEffect || perspective)) grade = "A";
+    else if (bReached) grade = "B";
   } else if (lesson.id === 7) {
-    if (groups.length >= 5 && relation && clean.length >= 110) grade = "A";
-    else if (groups.length >= 4 && relation && longEnough) grade = "B";
+    const bReached = groups.length >= 4 && relation;
+    if (bReached && (groups.length >= 5 || perspective)) grade = "A";
+    else if (bReached) grade = "B";
   } else {
-    if (groups.length >= 3 && relation && effect && clean.length >= 95) grade = "A";
-    else if (groups.length >= 2 && (relation || source) && longEnough) grade = "B";
+    const bReached = groups.length >= 2 && (relation || source);
+    if (bReached && groups.length >= 3 && generalEffect) grade = "A";
+    else if (bReached) grade = "B";
   }
 
   const reasons: string[] = [];
-  if (groups.length >= 2) reasons.push(`本時に関わる内容を${groups.length}つの観点から書いています。`);
-  else reasons.push("本時に関わる事実が、まだ一つの観点にとどまっています。");
-  if (source) reasons.push("資料・数値など、考えの根拠が示されています。");
-  else reasons.push("どの資料から分かったのかが文章から読み取りにくいです。");
-  if (relation) reasons.push("事実と意味、または複数の事柄をつなげて説明しています。");
-  else reasons.push("『なぜ』『どのようにつながるか』の説明を加える余地があります。");
-  if (grade === "A") reasons.push("学習した事実が水産業や生活に与える意味まで考えています。");
+  if (groups.length >= 2) reasons.push(`今日の学習に関わることを、${groups.length}つのまとまりから書けています。`);
+  else if (groups.length === 1) reasons.push("今日の学習で大切なことを、一つしっかり見付けています。");
+  else reasons.push("自分の言葉で、最後までまとめを書けました。");
+
+  if (relation) reasons.push("二つのことを「〜すると、〜につながる」とつないで考えています。");
+  else if (source) reasons.push("資料や数値をもとに、分かったことを書いています。");
+
+  if (lesson.id === 6 && lessonSixEffect) {
+    reasons.push("水産業の課題が、私たちの食生活にどう関わるかまで考えています。");
+  } else if (lesson.id === 6 && perspective) {
+    reasons.push("役立つ面や心配な面など、別の見方からも考えています。");
+  } else if (grade === "A") {
+    reasons.push("学習した事実の意味や、その先の影響まで考えています。");
+  }
 
   const evidence = groups.flatMap((group) => group.words).slice(0, 8);
-  let nextPrompt = "根拠にした資料を一つ選び、『このことから〜』と続けると、どんなことが言えますか。";
-  if (!source) nextPrompt = "どの資料の、どの変化や事実を根拠にしましたか。資料番号や数値を入れてみましょう。";
-  else if (!relation) nextPrompt = "書いた二つの事実は、どのようにつながっていますか。『〜すると、〜』で結んでみましょう。";
-  else if (!effect) nextPrompt = "そのことは、生産者・消費者やこれからの水産業にどんな影響がありますか。";
-  else if (grade === "A") nextPrompt = "別の立場から見ると、よさや心配な点はありますか。";
+  let nextPrompt = "授業で見付けた、もう一つの大切なことを思い出してみよう。";
+  if (groups.length >= 2 && !relation) {
+    nextPrompt = "二つのことを「〜すると、〜につながる」と、頭の中でつないでみよう。";
+  } else if (lesson.id === 6 && grade === "B") {
+    nextPrompt = "先生や友だちの話を思い出して、その先、私たちの食生活にどんな影響があるか考えてみよう。";
+  } else if (lesson.id === 6 && grade === "A") {
+    nextPrompt = "輸入や水産業の課題を、漁業者と消費者の両方から見ると、どんな違いがあるかな。";
+  } else if (grade === "B") {
+    nextPrompt = "そのことが、働く人や私たちの生活にどんなよさを生むか考えてみよう。";
+  } else if (grade === "A") {
+    nextPrompt = "よく深められたね。別の立場から見ると、どんな考えができるかな。";
+  }
 
   return {
     grade,
-    label: grade === "A" ? "十分満足できる" : grade === "B" ? "おおむね満足できる" : "支援して伸ばす",
+    label: gradeLabels[grade],
     reasons,
     evidence,
     nextPrompt,
-    caution: "この判定は文章だけを見た補助結果です。授業中の発言や学習過程も合わせて、教師が最終判断してください。",
+    caution: encouragements[grade],
     mode: "rubric",
   };
 }
@@ -114,17 +132,10 @@ async function fetchAiStatus(accessCode: string) {
   return (await response.json()) as AiStatus;
 }
 
-function formatUsd(value: number) {
-  if (value === 0) return "$0";
-  if (value < 0.01) return `$${value.toFixed(4)}`;
-  return `$${value.toFixed(2)}`;
-}
-
 export function Evaluator() {
   const [lessonId, setLessonId] = useState(6);
   const [text, setText] = useState("");
   const [result, setResult] = useState<Result | null>(null);
-  const [useAi, setUseAi] = useState(false);
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState("");
   const [accessCode, setAccessCode] = useState(() =>
@@ -138,7 +149,7 @@ export function Evaluator() {
     const savedCode = window.sessionStorage.getItem("suisan-access-code") ?? "";
     fetchAiStatus(savedCode)
       .then(setAiStatus)
-      .catch(() => setAiStatus({ configured: false, model: "gpt-5.4-nano", requiresAccessCode: false, reason: "AI設定を確認できませんでした。" }))
+      .catch(() => setAiStatus({ configured: false, requiresAccessCode: false }))
       .finally(() => setStatusBusy(false));
   }, []);
 
@@ -150,13 +161,13 @@ export function Evaluator() {
       setAiStatus(status);
       if (status.authorized) {
         window.sessionStorage.setItem("suisan-access-code", accessCode.trim());
-        setNotice("クラス用合言葉を確認しました。");
+        setNotice("合言葉を確認できました。");
       } else {
         window.sessionStorage.removeItem("suisan-access-code");
-        setNotice("合言葉が違います。先生に確認してください。");
+        setNotice("合言葉がちがいます。先生に聞いてみよう。");
       }
     } catch {
-      setNotice("AIの利用状況を確認できませんでした。");
+      setNotice("今は合言葉を確認できません。まとめのチェックはそのまま使えます。");
     } finally {
       setStatusBusy(false);
     }
@@ -164,21 +175,18 @@ export function Evaluator() {
 
   async function evaluate() {
     if (text.trim().length < 15) {
-      setNotice("まとめを15文字以上入力してください。");
+      setNotice("まとめをもう少し書いてから、チェックしてみよう。");
       setResult(null);
       return;
     }
+
     setBusy(true);
     setNotice("");
     const fallback = localEvaluate(text, lesson);
-    if (!useAi) {
+    const canUseAi = aiStatus?.configured && (!aiStatus.requiresAccessCode || aiStatus.authorized);
+
+    if (!canUseAi) {
       setResult(fallback);
-      setBusy(false);
-      return;
-    }
-    if (aiStatus?.requiresAccessCode && !aiStatus.authorized) {
-      setResult(fallback);
-      setNotice("AI精査にはクラス用合言葉が必要です。無料判定を表示しました。");
       setBusy(false);
       return;
     }
@@ -195,67 +203,41 @@ export function Evaluator() {
       });
       const payload = (await response.json()) as Result & ApiError;
       if (!response.ok) {
-        if (payload.usage && aiStatus) setAiStatus({ ...aiStatus, usage: payload.usage });
-        if (payload.code === "monthly_limit") setUseAi(false);
         if (payload.code === "access_denied" && aiStatus) {
           setAiStatus({ ...aiStatus, authorized: false });
           window.sessionStorage.removeItem("suisan-access-code");
         }
-        throw new Error(payload.error || "AI精査を利用できませんでした。");
+        throw new Error(payload.error || "check unavailable");
       }
       setResult(payload);
-      if (payload.usage && aiStatus) {
-        setAiStatus({ ...aiStatus, authorized: true, usage: payload.usage });
-        if (payload.usage.requests >= payload.usage.requestLimit || payload.usage.usedUsd >= payload.usage.budgetUsd) {
-          setUseAi(false);
-        }
-      }
-    } catch (error) {
+    } catch {
       setResult(fallback);
-      setNotice(`${error instanceof Error ? error.message : "AI精査を利用できませんでした。"} 無料のルーブリック判定を表示しました。`);
     } finally {
       setBusy(false);
     }
   }
 
-  async function copyResult() {
-    if (!result) return;
-    const value = `第${lesson.id}時 ${lesson.shortTitle}\n判定：${result.grade}（${result.label}）\n見取り：${result.reasons.join(" ")}\n次の問い：${result.nextPrompt}`;
-    await navigator.clipboard.writeText(value);
-    setNotice("判定結果をコピーしました。");
-  }
-
-  const aiLimitReached = Boolean(
-    aiStatus?.usage &&
-      (aiStatus.usage.requests >= aiStatus.usage.requestLimit || aiStatus.usage.usedUsd >= aiStatus.usage.budgetUsd),
-  );
-  const usagePercent = aiStatus?.usage
-    ? Math.min(100, Math.max(
-        (aiStatus.usage.usedUsd / aiStatus.usage.budgetUsd) * 100,
-        (aiStatus.usage.requests / aiStatus.usage.requestLimit) * 100,
-      ))
-    : 0;
-
   return (
     <div className="evaluator-layout">
       <section className="input-panel panel">
         <div className="panel-heading">
-          <span>STEP 1</span><h2>本時とまとめを入力</h2>
+          <span>STEP 1</span><h2>自分のまとめを入れよう</h2>
         </div>
-        <label className="field-label" htmlFor="lesson">授業を選ぶ</label>
+
+        <label className="field-label" htmlFor="lesson">今日の授業</label>
         <select id="lesson" value={lessonId} onChange={(event) => { setLessonId(Number(event.target.value)); setResult(null); }}>
           {lessons.map((item) => <option key={item.id} value={item.id}>第{item.id}時　{item.shortTitle}</option>)}
         </select>
 
         <div className="lesson-focus">
-          <small>本時の問い</small>
+          <small>今日の問い</small>
           <p>{lesson.question}</p>
-          <small>主な見取り</small>
+          <small>チェックのポイント</small>
           <p>{lesson.focus}</p>
         </div>
 
         <div className="label-row">
-          <label className="field-label" htmlFor="summary">児童のまとめ</label>
+          <label className="field-label" htmlFor="summary">自分で書いたまとめ</label>
           <span>{text.length} / 1200</span>
         </div>
         <textarea
@@ -263,90 +245,64 @@ export function Evaluator() {
           maxLength={1200}
           value={text}
           onChange={(event) => { setText(event.target.value); setResult(null); }}
-          placeholder="児童名を入れず、まとめの文章だけを貼り付けます。"
+          placeholder="自分で書いたまとめを、ここに入力しよう。"
           rows={9}
         />
 
-        <div className="ai-settings" aria-label="AI精査の設定">
-          <label className="toggle-row ai-toggle">
-            <input
-              type="checkbox"
-              checked={useAi}
-              disabled={!aiStatus?.configured || (aiStatus.requiresAccessCode && !aiStatus.authorized) || aiLimitReached}
-              onChange={(event) => setUseAi(event.target.checked)}
-            />
-            <span>
-              GPT-5.4 nanoで精査する
-              <small>オフなら料金のかからないルーブリック判定</small>
-            </span>
-          </label>
-
-          {statusBusy ? (
-            <p className="ai-status-line">AI設定を確認しています…</p>
-          ) : !aiStatus?.configured ? (
-            <p className="ai-status-line ai-status-off">AI精査は未設定です。{aiStatus?.reason}</p>
-          ) : aiStatus.requiresAccessCode && !aiStatus.authorized ? (
-            <div className="access-code-row">
-              <label htmlFor="access-code">クラス用合言葉</label>
-              <div>
-                <input
-                  id="access-code"
-                  type="password"
-                  autoComplete="off"
-                  value={accessCode}
-                  onChange={(event) => setAccessCode(event.target.value)}
-                  onKeyDown={(event) => { if (event.key === "Enter") void checkAccessCode(); }}
-                />
-                <button className="button button-secondary" type="button" onClick={checkAccessCode}>確認</button>
-              </div>
-              <small>合言葉はこのタブを閉じるまでだけ保存します。</small>
+        {!statusBusy && aiStatus?.configured && aiStatus.requiresAccessCode && !aiStatus.authorized && (
+          <div className="access-code-row student-access-code">
+            <label htmlFor="access-code">先生から聞いたクラスの合言葉</label>
+            <div>
+              <input
+                id="access-code"
+                type="password"
+                autoComplete="off"
+                value={accessCode}
+                onChange={(event) => setAccessCode(event.target.value)}
+                onKeyDown={(event) => { if (event.key === "Enter") void checkAccessCode(); }}
+              />
+              <button className="button button-secondary" type="button" onClick={checkAccessCode}>確認</button>
             </div>
-          ) : aiStatus.usage ? (
-            <div className="usage-box">
-              <div className="usage-heading">
-                <span>{aiStatus.usage.month} のAI利用</span>
-                <strong>{aiStatus.usage.requests} / {aiStatus.usage.requestLimit}回</strong>
-              </div>
-              <div className="usage-meter" aria-label={`AI利用量 ${Math.round(usagePercent)}%`}>
-                <span style={{ width: `${usagePercent}%` }} />
-              </div>
-              <p>{aiLimitReached ? "今月のAI上限に達しました。無料判定は利用できます。" : <>概算 {formatUsd(aiStatus.usage.usedUsd)} / 上限 {formatUsd(aiStatus.usage.budgetUsd)}。どちらかの上限で自動停止します。</>}</p>
-            </div>
-          ) : (
-            <p className="ai-status-line">GPT-5.4 nanoを利用できます。</p>
-          )}
-        </div>
+          </div>
+        )}
 
-        <div className="input-actions">
-          <button className="button button-secondary" type="button" onClick={() => { setText(lesson.sample); setResult(null); }}>例文を入れる</button>
-          <button className="button button-primary" type="button" disabled={busy} onClick={evaluate}>{busy ? "判定中…" : useAi ? "AIでABC判定" : "無料でABC判定"}</button>
+        <div className="input-actions child-actions">
+          <button className="button button-secondary" type="button" onClick={() => { setText(lesson.sample); setResult(null); }}>例を見る</button>
+          <button className="button button-primary" type="button" disabled={busy} onClick={evaluate}>{busy ? "チェック中…" : "まとめをチェック"}</button>
         </div>
-        <p className="privacy-note">児童名・出席番号・学校名など、個人を特定できる情報は入力しないでください。入力したまとめ本文は保存しません。</p>
+        {notice && <p className="notice">{notice}</p>}
+        <p className="privacy-note">名前や出席番号は書かず、まとめの文だけを入れよう。入力した文は保存されません。</p>
       </section>
 
       <section className="result-panel panel" aria-live="polite">
-        <div className="panel-heading"><span>STEP 2</span><h2>見取りと次の問い</h2></div>
-        {notice && <p className="notice">{notice}</p>}
+        <div className="panel-heading"><span>STEP 2</span><h2>チェックの結果</h2></div>
         {!result ? (
           <div className="empty-result">
             <div className="empty-mark">A<br /><span>B　C</span></div>
-            <p>判定すると、根拠・関連付け・次の問いがここに表示されます。</p>
+            <p>まとめを書いて「まとめをチェック」を押すと、できているところと、つぎの一歩が分かります。</p>
           </div>
         ) : (
           <div className={`result-card grade-${result.grade.toLowerCase()}`}>
             <div className="grade-row">
               <div className="grade-badge"><strong>{result.grade}</strong><span>{result.label}</span></div>
-              <span className="mode-badge">{result.mode === "ai" ? "GPT-5.4 nano精査" : "無料ルーブリック判定"}</span>
             </div>
-            <h3>見取れたこと</h3>
+
+            <h3>できているところ</h3>
             <ul>{result.reasons.map((reason, index) => <li key={index}>{reason}</li>)}</ul>
-            {result.evidence.length > 0 && <div className="evidence-chips">{result.evidence.map((item, index) => <span key={`${item}-${index}`}>{item}</span>)}</div>}
-            <div className="next-prompt"><small>児童への次の問い</small><p>{result.nextPrompt}</p></div>
-            <p className="caution">{result.caution}</p>
-            <button className="button button-secondary full-button" type="button" onClick={copyResult}>結果をコピー</button>
+
+            {result.evidence.length > 0 && (
+              <>
+                <h3>まとめに入っていた大切な言葉</h3>
+                <div className="evidence-chips">{result.evidence.map((item, index) => <span key={`${item}-${index}`}>{item}</span>)}</div>
+              </>
+            )}
+
+            <div className="next-prompt"><small>つぎの一歩</small><p>{result.nextPrompt}</p></div>
+            <p className="encouragement">{result.caution}</p>
           </div>
         )}
       </section>
     </div>
   );
 }
+

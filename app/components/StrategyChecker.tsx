@@ -34,7 +34,7 @@ export function StrategyChecker() {
   ], [form]);
 
   const score = checks.filter((item) => item.ok).length;
-  const status = score >= 6 ? "作戦OK" : score >= 4 ? "あと一歩" : "作戦を組み直そう";
+  const status = score >= 6 ? "作戦OK！" : score >= 4 ? "あと一歩！" : "ここからよくなる！";
 
   function set<K extends keyof FormState>(key: K, value: FormState[K]) {
     setForm((current) => ({ ...current, [key]: value }));
@@ -92,7 +92,7 @@ export function StrategyChecker() {
         <textarea id="effect" rows={4} value={form.effect} onChange={(event) => set("effect", event.target.value)} placeholder="この取組によって、課題がどう改善するか" />
 
         <label className="field-label" htmlFor="concern">心配な点・さらに必要な工夫</label>
-        <textarea id="concern" rows={3} value={form.concern} onChange={(event) => set("concern", event.target.value)} placeholder="費用、環境、別の立場から見た心配など（Aを目指す視点）" />
+        <textarea id="concern" rows={3} value={form.concern} onChange={(event) => set("concern", event.target.value)} placeholder="費用、環境、別の立場から見た心配など" />
 
         <div className="form-buttons">
           <button className="button button-secondary" type="button" onClick={fillExample}>例を入れる</button>
@@ -109,7 +109,7 @@ export function StrategyChecker() {
           <div className="check-list">
             {checks.map((item) => <div className={item.ok ? "is-ok" : ""} key={item.label}><span aria-hidden="true">{item.ok ? "✓" : "·"}</span><p>{item.label}</p></div>)}
           </div>
-          {score < 6 && <div className="advice-box"><small>次に見直すところ</small><p>{checks.find((item) => !item.ok)?.label}</p></div>}
+          {score < 6 && <div className="advice-box"><small>つぎに足すとよいところ</small><p>{checks.find((item) => !item.ok)?.label}</p></div>}
           {notice && <p className="notice">{notice}</p>}
           <button className="button button-primary full-button" type="button" onClick={copyDraft}>発表用の下書きをコピー</button>
           <p className="privacy-note">入力内容は保存されません。児童名などの個人情報は入力しないでください。</p>

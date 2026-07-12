@@ -11,7 +11,7 @@ export function SiteHeader({ current }: { current: Current }) {
           <span>水産業 学習ツール<small>5年社会</small></span>
         </Link>
         <nav aria-label="主なメニュー">
-          <Link aria-current={current === "hyouka" ? "page" : undefined} href="/hyouka">まとめ評価</Link>
+          <Link aria-current={current === "hyouka" ? "page" : undefined} href="/hyouka">まとめチェック</Link>
           <Link aria-current={current === "sakusen" ? "page" : undefined} href="/sakusen">作戦チェック</Link>
         </nav>
       </div>

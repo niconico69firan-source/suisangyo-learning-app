@@ -96,6 +96,7 @@ textarea { resize: vertical; line-height: 1.8; }
 .label-row { display: flex; justify-content: space-between; align-items: end; }
 .label-row span { color: var(--muted); font-size: 11px; }
 .input-actions { display: grid; grid-template-columns: auto 1fr auto; gap: 12px; align-items: center; margin-top: 18px; }
+.child-actions { grid-template-columns: auto 1fr; }
 .button { border: 0; border-radius: 12px; padding: 12px 17px; font-weight: 900; cursor: pointer; transition: transform .15s, opacity .15s, background .15s; }
 .button:hover { transform: translateY(-1px); }
 .button:disabled { cursor: wait; opacity: .62; }
@@ -129,6 +130,7 @@ textarea { resize: vertical; line-height: 1.8; }
 .next-prompt small { color: #8ddbd3; font-weight: 900; letter-spacing: .08em; }
 .next-prompt p { margin: 7px 0 0; font-weight: 800; }
 .caution { margin: 15px 0; color: var(--muted); font-size: 10px; }
+.encouragement { margin: 16px 0 0; padding: 14px 16px; border-radius: 13px; background: #eaf6f2; color: var(--green); font-size: 13px; font-weight: 900; }
 .full-button { width: 100%; }
 .tool-footer { margin-block: 45px; padding-block: 22px; border-top: 1px solid var(--line); color: var(--muted); font-size: 11px; text-align: center; }
 
@@ -210,6 +212,7 @@ textarea { resize: vertical; line-height: 1.8; }
 .access-code-row input { width: 100%; min-width: 0; padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; background: white; }
 .access-code-row .button { padding-block: 9px; }
 .access-code-row small { display: block; margin-top: 6px; color: var(--muted); font-size: 9px; }
+.student-access-code { margin-top: 16px; padding: 14px; border: 1px solid var(--line); border-radius: 13px; background: #f8fbfa; }
 .usage-box { margin-top: 14px; }
 .usage-heading { display: flex; justify-content: space-between; gap: 12px; color: var(--navy); font-size: 10px; font-weight: 800; }
 .usage-heading strong { font-size: 11px; }

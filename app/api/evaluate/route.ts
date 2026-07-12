@@ -376,8 +376,21 @@ export async function POST(request: Request) {
     );
   }
 
-  const system = `あなたは小学校5年社会科の学習評価を補助する評価者です。Bを本時目標のおおむね達成、AをBに加えて関連付け・意味・多角性が質的に深まった状態、Cを教師の支援が必要な状態として判定します。語句の数や文章量だけでAにしません。文章に書かれていない能力を推測しません。児童の人格や将来性を評価しません。児童を傷つけない簡潔な日本語で返してください。判定は教師の最終判断を代替しません。`;
-  const prompt = `第${lesson.id}時「${lesson.shortTitle}」\n本時の問い：${lesson.question}\n見取りの重点：${lesson.focus}\n児童のまとめ：${text}`;
+  const system = `あなたは小学校5年社会科で、児童本人にまとめのよさと次の一歩を返す学習サポーターです。
+判定は文章量や語句の数ではなく、書かれた内容の質で行ってください。文章にない能力を推測せず、人格を評価しません。
+
+第6時の基準：
+- B：資料から分かる二つ以上の課題を書き、課題同士のつながりを一つ説明している。資料番号や数値の明記は必須にしない。
+- A：Bに加え、国民の食生活・安定供給への影響まで考えている。または、輸入の役割と課題など、別の立場や複数の面から考えている。
+- C：一つの課題は書けているが、別の課題とのつながりがまだ十分に表れていない。
+第6時以外は、本時の問いとチェックのポイントに照らし、Bを今日の目標、Aを意味・影響・別の立場まで深まった状態として判断してください。
+
+児童向け出力の約束：
+- labelはA「すごい！考えが深まっているよ」、B「目標クリア！」、C「あと一歩！」のいずれか。
+- reasonsは、できていることだけを、具体的でやさしい言葉で2〜3点。足りない点、教師、評価処理、API、料金には触れない。
+- nextPromptは、書き直しを求めず、授業での交流や板書を思い出して次の学習で意識できる問いを一つ。
+- cautionは短い励ましの言葉。`;
+  const prompt = `第${lesson.id}時「${lesson.shortTitle}」\n今日の問い：${lesson.question}\nチェックのポイント：${lesson.focus}\n自分で書いたまとめ：${text}`;
 
   let reservationActive = true;
   try {
@@ -456,9 +469,27 @@ export async function POST(request: Request) {
       );
     }
 
-    const evaluation = JSON.parse(outputText) as Record<string, unknown>;
+    const evaluation = JSON.parse(outputText) as Record<string, unknown> & { grade?: "A" | "B" | "C" };
+    const grade = evaluation.grade === "A" || evaluation.grade === "B" ? evaluation.grade : "C";
+    const labels = {
+      A: "すごい！考えが深まっているよ",
+      B: "目標クリア！",
+      C: "あと一歩！",
+    } as const;
+    const encouragements = {
+      A: "自分の言葉で、考えをしっかりつなげられたね。すばらしい！",
+      B: "今日の大切なところが書けています。この調子！",
+      C: "ここまでまとめを書けたことが大事です。つぎの一歩を一つ意識してみよう。",
+    } as const;
     const current = await readUsage(db, monthKey);
-    return json({ ...evaluation, usage: publicUsage(current, settings) });
+    return json({
+      ...evaluation,
+      grade,
+      label: labels[grade],
+      caution: encouragements[grade],
+      mode: "ai",
+      usage: publicUsage(current, settings),
+    });
   } catch {
     if (reservationActive) await releaseReservation(db, monthKey);
     return json(
