@@ -150,7 +150,7 @@ async function fetchAiStatus(accessCode: string) {
 }
 
 export function Evaluator() {
-  const [lessonId, setLessonId] = useState(6);
+  const [lessonId, setLessonId] = useState(1);
   const [text, setText] = useState("");
   const [result, setResult] = useState<Result | null>(null);
   const [busy, setBusy] = useState(false);
